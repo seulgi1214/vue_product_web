@@ -1,3 +1,4 @@
+const exp = require('constants');
 const express = require('express');
 const app = express();
 const session = require('express-session');
@@ -15,6 +16,12 @@ app.use(session({
         maxAge: 1000 * 60 * 60 //쿠키 유효시간 1시간
     }
 }));
+
+
+app.use(express.json({
+    limit: '50mb'
+}));
+
 
 //웹서버 띄우는 부분(첫번째파라미터:포트)
 const server = app.listen(3000, () => {
@@ -46,10 +53,25 @@ const dbPool = require('mysql').createPool(db);
 
 
 // 클라이언트에서 post방식으로 요청이 왔을때 아래 path에 따라 탄다.
-app.post('/api/login', async(request, res) => {
-    request.session['email'] = 'leeseulgi1214@gmail.com'
-    res.send('ok');
-});
+app.post('/api/login', async (request, res) => {
+    // request.session['email'] = 'seungwon.go@gmail.com';
+    // res.send('ok');
+    try {
+      await req.db('signUp', request.body.param);
+      if (request.body.param.length > 0) {
+        for (let key in request.body.param[0]) request.session[key] = request.body.param[0][key];
+        res.send(request.body.param[0]);
+      } else {
+        res.send({
+          error: "Please try again or contact system manager."
+        });
+      }
+    } catch (err) {
+      res.send({
+        error: "DB access error"
+      });
+    }
+  });
 
 app.post('/api/logout', async(request, res) => {
     request.session.destroy();
@@ -79,7 +101,7 @@ app.post('/apirole/:alias', async(request, res) => {
 //ex. /api/productList - 로그인안해도 볼수있음
 app.post('/api/:alias', async(request, res) => {
     try {
-        res.send(await req.db(request.params.alias));
+        res.send(await req.db(request.params.alias, request.body.param));
     }catch(err) {
         res.status(500).send({
             error: err
